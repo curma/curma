@@ -1,0 +1,37 @@
+{
+  "name": "curma",
+  "version": "0.0.1",
+  "description": "",
+  "main": "bin/curma.js",
+  "scripts": {
+    "curma-dev": "curma dev",
+    "curma-build": "curma build",
+    "pack-dev": "rollup -cw",
+    "pack-build": "rollup -cm",
+    "npm-init": "npm install"
+  },
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/curma/curma.git"
+  },
+  "keywords": [
+    "curma"
+  ],
+  "author": "dy-xiaodong2022",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/curma/curma/issues"
+  },
+  "homepage": "https://github.com/curma/curma#readme",
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^11.0.0",
+    "tslib": "^2.5.0"
+  },
+  "dependencies": {
+    "commander": "^10.0.0",
+    "picocolors": "^1.0.0",
+    "portfinder": "^1.0.32",
+    "rollup": "^3.12.0"
+  }
+}
