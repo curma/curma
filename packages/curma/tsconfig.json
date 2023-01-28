@@ -2,7 +2,11 @@
   "compilerOptions": {
     "module": "esnext",
     "target": "es6",
-    "sourceMap": true
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "strict": true,
+    "noImplicitAny": true,
   },
   "include": [
     "src/**/*.ts",
