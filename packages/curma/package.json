@@ -3,11 +3,14 @@
   "version": "0.0.1",
   "description": "",
   "main": "bin/curma.js",
+  "bin": {
+    "curma": "bin/curma.js"
+  },
   "scripts": {
     "curma-dev": "curma dev",
     "curma-build": "curma build",
-    "pack-dev": "rollup -cw",
-    "pack-build": "rollup -cm",
+    "pack-dev": "tsc --watch -p ./tsconfig.json",
+    "pack-build": "tsc -p ./tsconfig.json",
     "npm-init": "npm install"
   },
   "type": "module",
@@ -20,15 +23,18 @@
   ],
   "author": "dy-xiaodong2022",
   "license": "MIT",
+  "types": "dist",
   "bugs": {
     "url": "https://github.com/curma/curma/issues"
   },
   "homepage": "https://github.com/curma/curma#readme",
   "devDependencies": {
-    "@rollup/plugin-typescript": "^11.0.0",
+    "@types/commander": "^2.12.2",
+    "@types/node": "^18.11.18",
     "tslib": "^2.5.0"
   },
   "dependencies": {
+    "@rollup/plugin-typescript": "^11.0.0",
     "commander": "^10.0.0",
     "picocolors": "^1.0.0",
     "portfinder": "^1.0.32",
