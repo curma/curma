@@ -1,0 +1,13 @@
+{
+  "name": "curma-playground",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "curma dev",
+    "build": "curma build"
+  },
+  "author": "dy-xiaodong2022",
+  "license": "MIT"
+}
