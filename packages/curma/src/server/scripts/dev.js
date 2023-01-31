@@ -1,5 +1,12 @@
 const port = "?port?";
 
+window.process = {
+  env: {
+    NODE_ENV: "development"
+  }
+}
+window.__VUE_PROD_DEVTOOLS__ = false
+
 const ws = new WebSocket(`ws://localhost:${port}/curma-ws-client`);
 ws.onopen = () => {
   console.debug("[curma] connected");
@@ -20,19 +27,23 @@ ws.onclose = () => {
   reconnect()
 }
 
-const requireWaitMap = {};
-let requireId = 0;
-
-window.require = (name) => {
+window.require = (path, name) => {
   console.log("[curma] require", name);
-  return new Promise((resolve) => {
-    requireWaitMap[requireId] = e => eval(e);
-    ws.send(JSON.stringify({
-      type: "require",
-      name: name,
-      id: requireId++
-    }));
-  })
+  const res = req_request(path, name);
+  // is json?
+  try {
+    return JSON.parse(res);
+  } catch (e) {
+    return res;
+  }
+}
+
+function req_request(path, name) {
+  const url = `/curma-require?path=${path}&name=${name}`;
+  const xhr = new XMLHttpRequest();
+  xhr.open("GET", url, false);
+  xhr.send();
+  return xhr.responseText;
 }
 
 // on receive message
@@ -41,9 +52,5 @@ ws.onmessage = data => {
   if (data === "reload") {
     console.debug("[curma] reload");
     location.reload();
-  }
-  data = JSON.parse(data);
-  if (data.type === "require") {
-    requireWaitMap[data.id](data.data);
   }
 }
