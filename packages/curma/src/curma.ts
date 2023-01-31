@@ -1,9 +1,12 @@
-type curmaConfig = {
+export type curmaConfig = {
     cdnDependencies?: {
         dev?: boolean;
         prod?: boolean;
+        custom?: {
+            [key: string]: string;
+        }
     };
-    error: {
+    error?: {
         cdnDependenciesNoVersion?: boolean;
     },
     root?: string;
