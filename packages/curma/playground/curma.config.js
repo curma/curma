@@ -7,5 +7,8 @@ export default defineConfig({
     // Using cdn dependencies in production mode
     prod: false
   },
-
+  error: {
+    cdnDependenciesNoVersion: true
+  },
+  root: "/",
 })

@@ -9,5 +9,9 @@
     "build": "curma build"
   },
   "author": "dy-xiaodong2022",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "fastjs-next": "^1.3.0",
+    "vue": "^3.2.45"
+  }
 }
