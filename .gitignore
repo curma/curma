@@ -1,3 +1,4 @@
 .idea/
 packages/curma/node_modules/
 packages/curma/playground/node_modules
+packages/curma/dist/

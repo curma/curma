@@ -24,6 +24,9 @@ import {createApp} from 'vue'
 import App from '@/App.vue'
 import '../style.css'
 
+const json = require('./test.json')
+console.log(json);
+
 const app = createApp(App)
 
 app.mount('#app')

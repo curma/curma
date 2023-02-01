@@ -21,7 +21,9 @@ const portfinder = require('portfinder')
 const pkg: { [key: string]: any } = require('../../package.json');
 const usr_pkg: { [key: string]: any } = require(path.join(process.cwd(), 'package.json'));
 
-import curma_require from "./require";
+import curma_require from "./require.js";
+import curma_require_resolve from "./require_resolve.js";
+import curma_package_resolve from "./package_resolve.js";
 
 export default async function () {
     // start time
@@ -46,13 +48,14 @@ export default async function () {
     // create server
     _loader.update("Create Server", 2);
     const server = createServer((req: IncomingMessage, res: ServerResponse) => {
-        outputDev("Request received - " + req.url);
+        const org_url = req.url;
         // read file
         const _autoIndex = [
             "index.html", "index.vue", "index.js", "index.ts", "style.css", "style.scss", "style.sass", "style.less", "style.styl", "style.stylus", ".js", ".html", ".ts", ".css", ".scss", ".sass", ".less", ".styl", ".stylus"
         ]
         // is exists
         const _isExists = (file: string): string | false => {
+            console.log(file)
             if (!fs.existsSync(file) || !fs.statSync(file).isFile()) {
                 // try auto index
                 for (let index of _autoIndex) {
@@ -62,6 +65,14 @@ export default async function () {
                         }
                     } else {
                         if (fs.existsSync(path.join(file, index))) {
+                            // if last char is not /, return 302 (except index.html)
+                            if (file[file.length - 1] !== "/" && index !== "index.html") {
+                                res.writeHead(302, {
+                                    Location: req.url + "/" + index
+                                });
+                                res.end();
+                                return "out";
+                            }
                             return path.join(file, index);
                         }
                     }
@@ -70,7 +81,51 @@ export default async function () {
             }
             return file
         }
-        const fileUrl = _isExists(path.join(process.cwd(), req.url || "")) || _isExists(path.join(process.cwd(), "public", req.url || ""));
+
+        // if referer = /curma-package?name={package_name}
+        // and (if _isExists(process.cwd() + req.url) = false or /curma-require or /curma-package)
+        // then resolve
+        // req.url = node_modules/{package_name}
+        if (req.headers.referer?.includes("/curma-package?name=") &&
+            !(_isExists(path.join(process.cwd(), req.url as string)) ||
+                req.url?.includes("/curma-require") ||
+                req.url?.includes("/curma-package"))
+        ) {
+            const packageRoot = path.resolve(
+                process.cwd(), "node_modules", req.headers.referer.split("?name=")[1]
+            )
+            // find package.json
+            const packageJson = require(
+                path.resolve(packageRoot, "package.json")
+            )
+            const nowPath = path.resolve(packageRoot,
+                packageJson.module || packageJson.main
+            ).split("node_modules")[1].replace(/([\\/])[^\\/]+\..+$/g, "")
+            console.log(path.resolve(packageRoot,
+                packageJson.module || packageJson.main
+            ), nowPath)
+            req.url = path.resolve('/node_modules/', `.${nowPath}${req.url}`)
+            console.log(req.url)
+            // del before /node_modules
+            req.url = req.url?.split("node_modules")[1]
+            req.url = "node_modules" + req.url
+            // 302
+            res.writeHead(302, {
+                Location: req.url
+            });
+            return res.end();
+        }
+
+        outputDev("Request received - " + req.url);
+        // if req.url start with *:
+        if (/^[A-Za-z]+:/g.test(req.url as string)) {
+            warn("We got a request with a protocol, it looks like a curma bug, please report it to https://github.com/curma/curma/issues",
+                "\nRequest URL: " + org_url,
+                "\nResolve url: " + req.url,
+                "\nReferer: " + req.headers.referer)
+        }
+        const fileUrl = _isExists(path.join(process.cwd(), req.url as string)) || _isExists(path.join(process.cwd(), "public", req.url as string));
+        if (fileUrl === "out") return;
         let fileIndex = "";
         if (fileUrl) fileIndex = fs.readFileSync(fileUrl).toString();
         const _contentTypeMap = {
@@ -98,32 +153,8 @@ export default async function () {
         }
         const _fileExt = setContentType(fileUrl || "")
         if (req.url?.includes(`/curma-package`)) {
-            let packageName = req.url?.split("curma-package?name=")[1];
-            packageName = packageName?.split("&")[0];
-            if (packageName.includes("/")) {
-                const _path = path.join(process.cwd(), "node_modules", packageName);
-                if (fs.existsSync(_path)) {
-                    fileIndex = fs.readFileSync(_path).toString();
-                } else warn(`File not found: ${_path}`);
-            } else if (packageName) {
-                outputDev("Request package - " + packageName);
-                const packageInfo = require(path.join(process.cwd(), 'node_modules', packageName, 'package.json'));
-                if (packageName === "vue") {
-                    packageInfo.module = "dist/vue.esm-bundler.js";
-                }
-                output(path.join(process.cwd(), 'node_modules', packageName, packageInfo.module || packageInfo.main));
-                // return package.main
-                const mainFile = _isExists(path.join(process.cwd(), 'node_modules', packageName, packageInfo.module || packageInfo.main));
-                if (!mainFile) {
-                    warn(`package ${packageName} has no main file`);
-                } else {
-                    if (!fs.existsSync(mainFile)) warn(`package ${packageName} main file not found: ${packageInfo.main}`);
-                    else {
-                        fileIndex = fs.readFileSync(mainFile).toString();
-                        res.setHeader("Content-Type", "application/javascript");
-                    }
-                }
-            }
+            fileIndex = curma_package_resolve(req.url as string);
+            res.setHeader("Content-Type", "application/javascript");
         }
         if (_fileExt === "html") {
             const _curmaScriptIndex = String(fs.readFileSync(path.join(__dirname, "node_modules/curma/dist/server/scripts/dev.js")))
@@ -134,7 +165,7 @@ export default async function () {
             // if Sec-Fetch-Dest is script
             if (req.headers["sec-fetch-dest"] === "script") {
                 res.setHeader("Content-Type", "application/javascript");
-                fileIndex = "document.head.innerHTML += `<style from-file=\"".concat(req.url || "", "\">").concat(fileIndex, "</style>`");
+                fileIndex = "document.head.innerHTML += `<style from-file=\"".concat(req.url as string, "\">").concat(fileIndex, "</style>`");
             }
         }
         if (_fileExt === "js" || _fileExt === "vue" || _fileExt === "ts") {
@@ -200,48 +231,7 @@ export default async function () {
             export default {template: \`${template}\`, style: \`${style?.[0] || ""}\`, ${script.substring(1)}`;
         }
         if (req.url?.includes(`/curma-require`)) {
-            let requireName = req.url?.split("name=").slice(1).join("name=")
-
-            const pathList = requireName.split("&&").map((item: string, key: number) => {
-                outputDev(`requireName: ${item}`);
-                // if curma-package
-                if (item.includes("curma-package")) {
-                    output(`curma-package: ${item} =============`);
-                    const packageName = item.split("curma-package?name=")[1].split("&")[0];
-                    return path.join(
-                        "node_modules",
-                        packageName,
-                        require(path.join(process.cwd(), 'node_modules', packageName, 'package.json')).main.replace(/[a-zA-Z0-9_\-]+\.[a-z]+$/, "")
-                    );
-                }
-                if (item[0] === "/") item = item.substring(1);
-                // item = a/b/c  ->  if c have no . -> a/b
-                // item = "a/b/c"  ->  if c have no . -> item = "a/b"
-                if (!item.includes(".")) {
-                    console.log(item);
-                    // get c
-                    const c = item.split("/").pop();
-                    // if c is not a dict
-                    if (!fs.existsSync(path.join(process.cwd(), item, c))) {
-                        return item.split("/").slice(0, -1).join("/");
-                    }
-                } else {
-                    // is last item?
-                    if (!(key === requireName.split("&&").length - 1)) {
-                        return item.split("/").slice(0, -1).join("/");
-                    }
-                }
-                return item;
-            });
-            const _path = path.resolve(process.cwd(), ...pathList)
-            let _require = "export default {}";
-            output(`require: ${_path}`);
-            if (fs.existsSync(_path)) {
-                _require = fs.readFileSync(_path).toString();
-            } else {
-                warn("Require file not found: " + _path, "[curma:requireFileNotFound]");
-            }
-            fileIndex = _require;
+            fileIndex = curma_require_resolve(req.url);
         }
         // get file
         if (!fileUrl && !fileIndex) {
@@ -249,7 +239,7 @@ export default async function () {
             res.end("404 Not Found");
             return;
         }
-        fileIndex = curma_require(fileIndex, req.url || "");
+        fileIndex = curma_require(fileIndex, req.url as string);
         res.writeHead(200);
         res.end(fileIndex);
     })

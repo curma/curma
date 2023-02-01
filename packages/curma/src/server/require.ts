@@ -2,11 +2,12 @@ type fileIndex = string;
 
 export default function require(fileIndex: string, url: string): fileIndex {
     // Find require
-    const requireRegex: RegExp = /require\((['"])(.*?)\1\)/g;
-    const requires: RegExpMatchArray = fileIndex.match(requireRegex) || [];
+    const requireRegex: RegExp = /require\((['"`])(.*?)\1\)/g;
+    const requires = fileIndex.match(requireRegex) || [];
     for (let require of requires) {
-        const requirePath: string = require.replace(/require\((['"])(.*?)\1\)/g, "$2");
-        fileIndex
+        const requirePath: string = require.replace(/require\((['"`])(.*?)\1\)/g, "$2");
+        console.log("require", require)
+        fileIndex = fileIndex
             .replace(
                 require, `window.require("${url}", "${requirePath}")`
             )

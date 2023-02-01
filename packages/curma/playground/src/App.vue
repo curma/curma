@@ -12,6 +12,8 @@
 </template>
 
 <script>
+import { rand } from "fastjs-next"
+
 export default {
   name: "App",
   data() {
@@ -21,7 +23,7 @@ export default {
   },
   methods: {
     increment() {
-      this.count++
+      this.count = rand(0, 100)
     }
   }
 }
